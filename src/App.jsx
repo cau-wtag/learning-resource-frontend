@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 
 const API_BASE = '/api';
@@ -69,7 +69,7 @@ function App() {
     }
   };
 
-  const loadResources = async () => {
+const loadResources = useCallback(async () => {
     if (!currentUser) return;
     try {
       setLoading(true);
@@ -82,12 +82,33 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
 
   useEffect(() => {
-    if (currentUser) {
-      loadResources();
+    let ignore = false;
+
+    async function fetchOnMount() {
+      try {
+        const res = await fetch(`${API_BASE}/resources/user/${currentUser.id}`);
+        if (!res.ok) throw new Error('Could not fetch resources');
+        const data = await res.json();
+        if (!ignore) {
+          setResources(data);
+        }
+      } catch (err) {
+        if (!ignore) {
+          console.error(err);
+        }
+      }
     }
+
+    if (currentUser) {
+      fetchOnMount();
+    }
+
+    return () => {
+      ignore = true;
+    };
   }, [currentUser]);
 
   const handleSaveResource = async (e) => {
